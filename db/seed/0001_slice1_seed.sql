@@ -11,9 +11,10 @@
 --   [S1] berita.tarakankota.go.id/2025/02 (pelantikan Wali Kota 20-02-2025)
 --   [S2] kaltara.antaranews.com/berita/513809 (Khairul–Ibnu Saud dilantik)
 --   [S3] kaltara.antaranews.com/berita/522945 (Sekda Abdul Azis Hasan, 31-07-2026)
+--
+-- TRANSACTION POLICY: transaction-agnostic (no BEGIN/COMMIT); the runner
+-- wraps it (psql --single-transaction / CI). Approved 3D.1 portability fix.
 -- =====================================================================
-
-BEGIN;
 
 -- ---------------------------------------------------------------------
 -- Reference vocabularies (PROPOSED nomenclature — standard ID gov terms).

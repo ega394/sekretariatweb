@@ -18,10 +18,11 @@ echo ">> (re)creating database: $DB"
 PGDATABASE=postgres psql -v ON_ERROR_STOP=1 -qc "DROP DATABASE IF EXISTS \"$DB\";" -qc "CREATE DATABASE \"$DB\";"
 
 echo ">> applying schema"
-PGDATABASE="$DB" psql -v ON_ERROR_STOP=1 -q -f "$HERE/migrations/0001_slice1_pimpinan.sql"
+# migration/seed SQL are transaction-agnostic; the runner owns the transaction.
+PGDATABASE="$DB" psql -v ON_ERROR_STOP=1 --single-transaction -q -f "$HERE/migrations/0001_slice1_pimpinan.sql"
 
 echo ">> seeding confirmed baseline"
-PGDATABASE="$DB" psql -v ON_ERROR_STOP=1 -q -f "$HERE/seed/0001_slice1_seed.sql"
+PGDATABASE="$DB" psql -v ON_ERROR_STOP=1 --single-transaction -q -f "$HERE/seed/0001_slice1_seed.sql"
 
 echo ">> running tests"
 PGDATABASE="$DB" psql -v ON_ERROR_STOP=1 -f "$HERE/tests/0001_slice1_tests.sql" 2>&1 \

@@ -12,9 +12,12 @@
 -- decisions that diverged from the on-paper 3D spec.
 --
 -- Target: PostgreSQL 16+
+--
+-- TRANSACTION POLICY: this file is transaction-AGNOSTIC — it contains no
+-- BEGIN/COMMIT. The runner owns the transaction boundary (psql
+-- --single-transaction, a migration tool, or CI), so the same file runs
+-- identically everywhere. (Approved 3D.1 portability fix.)
 -- =====================================================================
-
-BEGIN;
 
 -- ---------------------------------------------------------------------
 -- 0. EXTENSIONS
@@ -427,8 +430,6 @@ CREATE VIEW v_public_eligibility AS
     UNION ALL SELECT 'organization_unit', id, is_public FROM v_public_unit
     UNION ALL SELECT 'position',          id, is_public FROM v_public_position
     UNION ALL SELECT 'assignment',        id, is_public FROM v_public_assignment;
-
-COMMIT;
 
 -- =====================================================================
 -- 3D.1-FINDINGS  (physical decisions that diverged from on-paper 3D)
