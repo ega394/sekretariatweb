@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  # ---- Database layer: resolver tests + security proof (Phase 3D.1/3D.4) ----
+  db-core:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Slice-1 resolver tests (fresh PG → migrate → seed → test)
+        run: bash db/run_slice1.sh
+      - name: Security proof (app_public boundary)
+        run: PGDATABASE=setda_sec bash db/security/run_security_poc.sh
+
+  # ---- Application: lint → typecheck → unit/integration → build → E2E -------
+  app:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit + integration tests
+        env:
+          APP_PUBLIC_DB_URL: postgres://app_public@localhost:5432/setda_test
+          APP_ADMIN_DB_URL: postgres://app_admin@localhost:5432/setda_test
+        run: npm run test
+      - name: Build
+        run: npm run build
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Provision E2E database
+        run: PGDATABASE=setda_app bash db/reset-dev.sh
+      - name: E2E (public /pimpinan)
+        env:
+          APP_PUBLIC_DB_URL: postgres://app_public@localhost:5432/setda_app
+          APP_ADMIN_DB_URL: postgres://app_admin@localhost:5432/setda_app
+        run: npx playwright test

@@ -155,5 +155,3 @@ INSERT INTO verifications (status, source_type, source_reference, assignment_id)
     ('verified', 'media', 'Pelantikan 20-02-2025 [S1][S2]',       '40000000-0000-0000-0000-000000000001'),
     ('verified', 'media', 'Pelantikan 20-02-2025 [S1][S2]',       '40000000-0000-0000-0000-000000000002'),
     ('verified', 'media', 'Pelantikan Sekda 31-07-2026 [S3]',     '40000000-0000-0000-0000-000000000003');
-
-COMMIT;
