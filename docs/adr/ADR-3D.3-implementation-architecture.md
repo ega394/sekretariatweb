@@ -285,7 +285,7 @@ Migrations are an explicit, ordered, approved step — never auto-run from app s
 
 ## OUTPUT 10 — OPEN / PROPOSED / DEFERRED / CONFLICT
 - **🟡 PROPOSED (resolve at start of 3D.4, non-blocking):** `users.external_auth_id` additive migration · `app_public`/`app_admin` roles+grants migration (+verify Supabase pooler supports a second role; fallback app-layer + RLS) · zod as validator.
-- **🟠 OPEN (Pemkot/DKISP; do NOT lock):** production hosting · SSO Pemkot · data residency/PDN · production object storage · production backup ownership · long-term DKISP capability.
+- **🟠 OPEN (Pemkot/DKISP; do NOT lock):** production hosting · SSO Pemkot · data residency/PDN · production object storage · production backup ownership · long-term DKISP capability · **custom domain `setda.tarakankota.go.id` via CNAME** — attaching the official domain = production go-live, so it points at the *production* target (not the Hobby dev/pilot); requires DKISP DNS control and a PDN/data-residency check (may force production off Vercel/Supabase). No architecture impact — CNAME is pure infra.
 - **🔵 DEFERRED (not for Slice-1):** media pipeline/malware scan · full audit-trail table · external error-tracking · Redis/queue · Meilisearch · materialized views · RLS · mobile/public API.
 - **🔴 CONFLICT:** **none found.** Every Slice-1 requirement is satisfiable without altering a LOCKED decision. (The two 🟡 items are additive infra, not conflicts.)
 
