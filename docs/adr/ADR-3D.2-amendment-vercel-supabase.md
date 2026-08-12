@@ -150,14 +150,18 @@ Figures below are as reported by multiple 2026 secondary summaries and **must be
 
 ## 8. DECISION GATES (revised)
 
-**PRODUCT-OWNER DECISION (recorded 2026-08-12):** MVP is a **publicly-launched official site on Vercel Hobby (free) + Supabase (free)**. The "private vs public" OPEN is hereby **resolved to public**, with the two items below logged as **ACCEPTED RISK** by the product owner.
+**PRODUCT-OWNER DECISION (2026-08-12, corrected):** the free tier is a **development/pilot** commitment, **not** a production architecture. Three environments:
 
-**ACCEPTED RISK (eyes-open, product-owner call):**
-1. **Vercel Hobby non-commercial ToS.** An official government portal may fall outside Hobby's personal/non-commercial terms → Vercel can pause/suspend without notice (free tier stops, never bills) → risk of sudden downtime for an official site. *Mitigation:* the LOCKED abstractions keep migration to Vercel Pro / another host a config change, not a rewrite; monitor for any Vercel notice and upgrade if flagged.
-2. **Supabase free = no backups/PITR/SLA + 7-day auto-pause.** For official records, absence of backups is the sharper risk. *Mitigation (DEFERRED, recommended, free):* schedule a nightly `pg_dump` via GitHub Actions to an artifact/object store as an emergency backup; public traffic normally prevents production auto-pause. *(Not built now — STOP holds; logged for 3D.3+.)*
+| Environment | Platform | Status |
+|---|---|---|
+| **Development** | Vercel Hobby + Supabase Free | 🔒 LOCKED |
+| **Staging / Pilot** | Vercel Hobby + Supabase Free | 🔒 LOCKED |
+| **Production** | Vercel/Supabase **paid**, **or** Pemkot-managed PostgreSQL, **or** PDN-compliant infra (may move off Vercel if regulation requires) | 🟡 **OPEN** |
 
-**LOCKED (final for MVP before coding):**
-- MVP deploys on **Vercel Hobby + Supabase free tier**, as a **public official site** (accepted risks above).
+**Why the split (not "free forever"):** Vercel Hobby is personal/non-commercial ([Vercel Terms](https://vercel.com/legal/terms)); Supabase Free has **no automatic backups/PITR/SLA** and **auto-pauses after ~1 week of low activity** ([Supabase pricing](https://supabase.com/pricing)). That is acceptable for dev/pilot but **must not** back an official production portal. Crucially, **the Phase 3C / 3D.1 design does not change when production hosting changes** — that portability is exactly the indicator that the design is sound.
+
+**LOCKED (final for dev/pilot before coding):**
+- **Dev/Pilot** deploys on **Vercel Hobby + Supabase Free**. **Production hosting/target is OPEN** (table above) and must not be locked to the free tier.
 - **Runtime = Next.js (App Router) + TypeScript** (platform-forced for MVP).
 - Modular monolith, full-stack SSR, hard public/admin boundary (unchanged).
 - **SQL-first / PostgreSQL source of truth** (unchanged); runtime via Supavisor pooler, migrate via direct connection.
@@ -167,9 +171,10 @@ Figures below are as reported by multiple 2026 secondary summaries and **must be
 - Migration ownership = hand-written SQL files; Testing = Pest-equiv (vitest) + **`run_slice1.sh`** + Playwright; CI shape unchanged.
 
 **OPEN (needs Pemkot/DKISP/regulatory input):**
-- **Production hosting & data residency / PDN** compliance (drives whether prod stays on Vercel/Supabase or moves to PDN/on-prem). *Note: "public vs private" is now resolved to public — see PRODUCT-OWNER DECISION / ACCEPTED RISK above.*
+- **Production hosting & data residency / PDN** compliance — production is **not** locked to the free tier (see the three-environment table); options: Vercel/Supabase paid, Pemkot-managed PostgreSQL, or PDN-compliant infra.
+- **Production backup ownership** — free tier has none; a nightly `pg_dump` via GitHub Actions is a free stop-gap for dev/pilot, but production needs a real backup/PITR plan.
 - Production **auth provider** (Pemkot SSO/OIDC vs Supabase Auth vs local).
-- Production **object storage** and **backup ownership**.
+- Production **object storage** provider.
 - Long-term **DKISP maintenance capability** for a TS/Next.js stack.
 
 **DEFERRED (not needed for MVP):** Redis/queue worker, Meilisearch, materialized views, PostgreSQL RLS, malware-scan/heavy media pipeline, mobile/public API, Kubernetes, paid backups/PITR (until production).
