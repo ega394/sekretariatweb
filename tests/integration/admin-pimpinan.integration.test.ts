@@ -80,6 +80,8 @@ describe("admin Pimpinan lifecycle (service layer)", () => {
     expect(sekda.current_person).toBe("Abdul Azis Hasan");
     const history = (await listAssignments()).find((a) => a.id === assignmentId)!;
     expect(history.assignment_status).toBe("ended"); // history is kept
+    expect(history.start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/); // dates render as YYYY-MM-DD
+    expect(history.end_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it("rejects an unknown assignment type with a domain error", async () => {

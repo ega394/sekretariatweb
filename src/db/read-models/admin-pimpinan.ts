@@ -8,6 +8,11 @@ import { getAdminDb } from "@/db/admin-client";
  * recomputed here.
  */
 
+/** DATE columns arrive as JS Date (UTC midnight) from postgres.js; render as YYYY-MM-DD. */
+function toDateString(v: unknown): string {
+  return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
+}
+
 export interface PositionOverview {
   position_id: string;
   position_title: string;
@@ -98,8 +103,8 @@ export async function listAssignments(limit = 100): Promise<AssignmentRow[]> {
     .execute();
   return rows.map((r) => ({
     ...r,
-    start_date: String(r.start_date).slice(0, 10),
-    end_date: r.end_date ? String(r.end_date).slice(0, 10) : null,
+    start_date: toDateString(r.start_date),
+    end_date: r.end_date ? toDateString(r.end_date) : null,
   }));
 }
 
