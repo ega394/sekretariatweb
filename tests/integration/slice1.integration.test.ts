@@ -62,9 +62,7 @@ describe("assignment overlap is enforced by the DB, not TS", () => {
           actorUserId: SUPERADMIN,
           personId: KHAIRUL,
           positionId: SEKDA_POS,
-          positionSlug: "sekretaris-daerah",
           assignmentTypeCode: "definitif",
-          assignmentClass: "substantive",
           startDate: "2026-08-01",
         },
         (t) => {
@@ -82,9 +80,7 @@ describe("assignment overlap is enforced by the DB, not TS", () => {
           actorUserId: VERIFIER, // lacks manage_org_structure
           personId: KHAIRUL,
           positionId: SEKDA_POS,
-          positionSlug: "sekretaris-daerah",
           assignmentTypeCode: "definitif",
-          assignmentClass: "substantive",
           startDate: "2030-01-01",
         },
         () => {},

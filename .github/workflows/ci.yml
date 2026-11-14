@@ -71,8 +71,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Provision E2E database
         run: PGDATABASE=setda_app bash db/reset-dev.sh
-      - name: E2E (public /pimpinan)
+      - name: E2E (public /pimpinan + admin lifecycle)
         env:
+          PGDATABASE: setda_app
           APP_PUBLIC_DB_URL: postgres://app_public@localhost:5432/setda_app
           APP_ADMIN_DB_URL: postgres://app_admin@localhost:5432/setda_app
         run: npx playwright test

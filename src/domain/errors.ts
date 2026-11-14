@@ -23,6 +23,8 @@ export function mapPgError(err: unknown): DomainError | null {
       return new DomainError("Data melanggar aturan integritas.", "check_violation");
     case "23503": // foreign_key_violation
       return new DomainError("Referensi data tidak ditemukan.", "fk_violation");
+    case "23505": // unique_violation
+      return new DomainError("Data dengan nilai yang sama sudah ada.", "unique_violation");
     default:
       return null;
   }

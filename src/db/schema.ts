@@ -41,6 +41,70 @@ export interface AssignmentsTable {
   start_date: string;
   end_date: string | null;
   appointment_reference: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: string | null;
+}
+
+export interface UsersTable {
+  id: Generated<string>;
+  username: string;
+  external_auth_id: string | null;
+  status: string;
+  deleted_at: string | null;
+}
+
+export interface PersonsTable {
+  id: Generated<string>;
+  full_name: string;
+  display_name: string | null;
+  honorific_prefix: string | null;
+  honorific_suffix: string | null;
+  slug: string;
+  created_by: string | null;
+  deleted_at: string | null;
+}
+
+export interface PositionsTable {
+  id: string;
+  organization_unit_id: string;
+  title: string;
+  slug: string;
+  position_type_code: string;
+  deleted_at: string | null;
+}
+
+export interface OrganizationUnitsTable {
+  id: string;
+  name: string;
+  slug: string;
+  deleted_at: string | null;
+}
+
+export interface RefAssignmentTypesTable {
+  code: string;
+  label: string;
+  class: "substantive" | "acting";
+}
+
+export interface VCurrentHolder {
+  position_id: string;
+  assignment_id: string;
+  person_id: string;
+  assignment_class: "substantive" | "acting";
+  assignment_type_code: string;
+}
+
+export interface VPublicHolder {
+  position_id: string;
+  assignment_id: string;
+  person_id: string;
+}
+
+export interface VCurrentVerification {
+  entity_type: "person" | "organization_unit" | "position" | "assignment";
+  entity_id: string;
+  status: "needs_verification" | "verified" | "expired" | "rejected";
 }
 
 export interface VerificationsTable {
@@ -72,6 +136,14 @@ export interface AdminDatabase {
   verifications: VerificationsTable;
   role_permissions: RolePermissionsTable;
   user_roles: UserRolesTable;
+  users: UsersTable;
+  persons: PersonsTable;
+  positions: PositionsTable;
+  organization_units: OrganizationUnitsTable;
+  ref_assignment_types: RefAssignmentTypesTable;
   // read models (admin may also read the fact + public views)
   v_public_pimpinan: VPublicPimpinan;
+  v_current_holder: VCurrentHolder;
+  v_public_holder: VPublicHolder;
+  v_current_verification: VCurrentVerification;
 }

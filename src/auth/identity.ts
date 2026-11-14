@@ -1,56 +1,132 @@
 import "server-only";
-import { sql } from "kysely";
-import { getAdminDb } from "@/db/admin-client";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 /**
- * Identity port (Authentication) — kept separate from Authorization (RBAC).
+ * Identity port (Authentication) — separate from Authorization (RBAC).
  *
- * The application depends on this port, NOT on Supabase specifics. Swapping the
- * provider (Supabase Auth ⇄ OIDC / SSO Pemkot / local) only changes the adapter
- * that produces an { externalId }. Authorization always comes from our own
- * `users` + RBAC tables (Phase 3D.1), mapped via `users.external_auth_id`
- * (migration 0003).
+ * The application depends on `IdentityProvider`, never on Supabase specifics.
+ * Swapping the provider (Supabase Auth <-> OIDC/SSO Pemkot/local) only means
+ * providing another implementation that yields an `ExternalIdentity`.
+ * Authorization always comes from our own users + RBAC tables, mapped through
+ * `users.external_auth_id` (see src/auth/users.ts).
  */
 export interface ExternalIdentity {
   externalId: string;
-  email?: string | null;
+  email: string | null;
+}
+
+export interface SignInResult {
+  accessToken: string;
+  /** seconds until the access token expires */
+  expiresIn: number;
 }
 
 export interface IdentityProvider {
-  /** Resolve the caller's external identity from the request, or null. */
-  getIdentity(request: Request): Promise<ExternalIdentity | null>;
+  /** Exchange credentials for an access token; null = wrong credentials. */
+  signIn(email: string, password: string): Promise<SignInResult | null>;
+  /** Cryptographically verify a token; null = invalid/expired. */
+  verify(token: string): Promise<ExternalIdentity | null>;
 }
 
-/**
- * Default MVP provider = Supabase Auth. Structural adapter: it reads the
- * bearer JWT and returns the subject. Real cryptographic verification against
- * SUPABASE_JWT_SECRET is wired when a Supabase project exists (dev/pilot);
- * until then this is not exercised — RBAC/services are tested directly with a
- * known internal user id. See ADR-3D.3 C11.
- */
-export class SupabaseIdentityProvider implements IdentityProvider {
-  async getIdentity(request: Request): Promise<ExternalIdentity | null> {
-    const auth = request.headers.get("authorization");
-    if (!auth?.startsWith("Bearer ")) return null;
-    // TODO(dev/pilot): verify JWT signature with SUPABASE_JWT_SECRET (jose)
-    // before trusting `sub`. Left unverified here on purpose (no live project).
-    return null;
+export class IdentityConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "IdentityConfigError";
   }
 }
 
-/** Map an external identity to our internal users.id (Authorization anchor). */
-export async function mapIdentityToUser(
-  externalId: string,
-): Promise<string | null> {
-  const row = await getAdminDb()
-    .selectFrom(
-      sql<{ id: string }>`(
-        SELECT id FROM users
-        WHERE external_auth_id = ${externalId} AND deleted_at IS NULL
-        LIMIT 1
-      )`.as("u"),
-    )
-    .select("u.id")
-    .executeTakeFirst();
-  return row?.id ?? null;
+export interface SupabaseIdentityConfig {
+  /** e.g. https://<ref>.supabase.co (no trailing slash) */
+  url: string;
+  /** publishable/anon key — only used to call the Auth API */
+  anonKey: string;
+  /**
+   * Legacy HS256 JWT secret. When absent, tokens are verified against the
+   * project's public JWKS (asymmetric signing keys).
+   */
+  jwtSecret?: string;
+  fetchImpl?: typeof fetch;
+}
+
+export class SupabaseIdentityProvider implements IdentityProvider {
+  private readonly url: string;
+  private jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+
+  constructor(private readonly cfg: SupabaseIdentityConfig) {
+    this.url = cfg.url.replace(/\/+$/, "");
+  }
+
+  async signIn(email: string, password: string): Promise<SignInResult | null> {
+    const doFetch = this.cfg.fetchImpl ?? fetch;
+    const res = await doFetch(`${this.url}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { apikey: this.cfg.anonKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      cache: "no-store",
+    });
+    // 400/401/422 = bad credentials; anything else is an outage -> surface it.
+    if (res.status === 400 || res.status === 401 || res.status === 422) return null;
+    if (!res.ok) throw new Error(`Auth service error (${res.status})`);
+    const data = (await res.json()) as {
+      access_token?: unknown;
+      expires_in?: unknown;
+    };
+    if (typeof data.access_token !== "string") return null;
+    return {
+      accessToken: data.access_token,
+      expiresIn: Number(data.expires_in) > 0 ? Number(data.expires_in) : 3600,
+    };
+  }
+
+  async verify(token: string): Promise<ExternalIdentity | null> {
+    const options = {
+      audience: "authenticated",
+      issuer: `${this.url}/auth/v1`,
+    };
+    try {
+      const { payload } = this.cfg.jwtSecret
+        ? await jwtVerify(token, new TextEncoder().encode(this.cfg.jwtSecret), {
+            ...options,
+            algorithms: ["HS256"],
+          })
+        : await jwtVerify(token, this.getJwks(), {
+            ...options,
+            algorithms: ["ES256", "RS256"],
+          });
+      if (typeof payload.sub !== "string" || payload.sub.length === 0) return null;
+      return {
+        externalId: payload.sub,
+        email: typeof payload.email === "string" ? payload.email : null,
+      };
+    } catch {
+      return null; // bad signature, expired, wrong audience/issuer, ...
+    }
+  }
+
+  private getJwks() {
+    this.jwks ??= createRemoteJWKSet(
+      new URL(`${this.url}/auth/v1/.well-known/jwks.json`),
+    );
+    return this.jwks;
+  }
+}
+
+let _provider: IdentityProvider | null = null;
+
+/** Default provider for the MVP = Supabase Auth, configured from env. */
+export function getIdentityProvider(): IdentityProvider {
+  if (_provider) return _provider;
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new IdentityConfigError(
+      "Autentikasi belum dikonfigurasi (SUPABASE_URL dan SUPABASE_ANON_KEY).",
+    );
+  }
+  _provider = new SupabaseIdentityProvider({
+    url,
+    anonKey,
+    jwtSecret: process.env.SUPABASE_JWT_SECRET || undefined,
+  });
+  return _provider;
 }
