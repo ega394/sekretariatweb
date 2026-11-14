@@ -31,7 +31,7 @@
 ## 3D.4 findings
 
 - **F1 — `kysely-postgres-js` used as the driver dialect.** The ADR chose Kysely over postgres.js; the concrete dialect is `kysely-postgres-js@2` (verified importable/typed). No design change.
-- **F2 — Supabase-pooler caveat still OPEN.** The POC proves the PostgreSQL role/view mechanism (identical engine on Supabase). Whether the **Supavisor pooler** authenticates a custom `LOGIN` role must be verified on a real Supabase project; fallback documented in `db/security/README.md`. **No 3C business rule may change to accommodate it.**
+- **F2 — Supabase-pooler caveat: RESOLVED (2026-11-14).** Verified on a real Supabase project (dev/pilot): the Vercel Preview deployment connects through the Supavisor transaction pooler as `app_public.<project-ref>` and `/pimpinan` renders the 3 eligible officials. Supabase-specific hardening was required and is packaged in `db/deploy/supabase/` (revoke `anon`/`authenticated` Data API grants). Original note: The POC proves the PostgreSQL role/view mechanism (identical engine on Supabase). Whether the **Supavisor pooler** authenticates a custom `LOGIN` role must be verified on a real Supabase project; fallback documented in `db/security/README.md`. **No 3C business rule may change to accommodate it.**
 - **F3 — Auth JWT verification not exercised** in the sandbox (no live Supabase). The Identity port + Supabase adapter are in place; real JWT verification (jose + `SUPABASE_JWT_SECRET`) is wired when a project exists. RBAC/services were tested directly with known user ids.
 
 ## No CONFLICT with LOCKED decisions

@@ -45,3 +45,11 @@ documented Supabase pattern (trusted server-side connection restricted to the
 public views, and/or RLS on the Data API), and record it as a CONFLICT/OPEN.
 Do not add RLS reflexively: if the role+view boundary holds, RLS is redundant
 complexity for this design.
+
+## Status on real Supabase (2026-11-14)
+
+Verified on a real Supabase project (dev/pilot): the Supavisor transaction pooler
+accepts the custom `LOGIN` role `app_public` (user format `app_public.<project-ref>`),
+and the Vercel Preview deployment renders `/pimpinan` through it. Supabase grants
+`anon`/`authenticated` default privileges on the `public` schema; these must be revoked
+(`db/deploy/supabase/02_hardening_and_roles.sql`) because the app does not use the Data API.
